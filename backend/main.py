@@ -5,7 +5,7 @@ import openai
 import os
 import numpy as np
 import faiss
-import fitz 
+import pymupdf 
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,13 +28,12 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 def extract_text_from_pdf(pdf_path):
     text = ""
     try:
-        with fitz.open(pdf_path) as doc:
+        with pymupdf.open(pdf_path) as doc:
             for page in doc:
                 text += page.get_text("text") + "\n"
     except Exception as e:
         print(f"Error extracting text from {pdf_path}: {e}")
     return text.strip()
-
 
 def chunk_text(text, max_chars=8000):
     return [text[i:i+max_chars] for i in range(0, len(text), max_chars)]
