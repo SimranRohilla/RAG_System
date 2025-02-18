@@ -6,3 +6,4 @@ faiss-cpu
 python-dotenv
 fitz
 pymupdf
+gunicorn
