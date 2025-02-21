@@ -27,29 +27,23 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 # Configurable PDF Directory
 PDF_DIR = os.getenv("PDF_DIR", os.path.join(os.getcwd(), "pdf-files"))
 
-# Ensure the PDF directory exists
-if not os.path.exists(PDF_DIR):
-    print(f"⚠️ Warning: PDF directory '{PDF_DIR}' not found. Creating it...")
-    os.makedirs(PDF_DIR)
-
-# Load and process PDFs
-pdf_reports = []
-for filename in os.listdir(PDF_DIR):
-    if filename.endswith(".pdf"):
-        pdf_path = os.path.join(PDF_DIR, filename)
-        content = extract_text_from_pdf(pdf_path)
-        pdf_reports.append({
-            "id": len(pdf_reports) + 1,
-            "title": filename,
-            "content": content[:8000]
-        })
-
-
 # FAISS Index File
 FAISS_INDEX_PATH = "faiss_index.bin"
 
 # Define embedding dimensions (OpenAI "text-embedding-ada-002" = 1536)
 DIMENSION = 1536
+
+
+# ✅ Root Endpoint to Fix "404 Not Found"
+@app.get("/")
+def home():
+    return {"message": "API is running! Go to /docs to test."}
+
+
+# ✅ Ensure the PDF directory exists
+if not os.path.exists(PDF_DIR):
+    print(f"⚠️ Warning: PDF directory '{PDF_DIR}' not found. Creating it...")
+    os.makedirs(PDF_DIR)
 
 
 # ✅ Extract text from PDF
@@ -96,6 +90,9 @@ for filename in os.listdir(PDF_DIR):
             "content": content[:8000]  # Truncate long texts
         })
 
+if not pdf_reports:
+    print("⚠️ Warning: No PDFs found in 'pdf-files' directory. Please upload PDFs!")
+
 
 # ✅ Load or create FAISS index
 if os.path.exists(FAISS_INDEX_PATH):
@@ -119,6 +116,8 @@ class QueryRequest(BaseModel):
 # ✅ Get available reports
 @app.get("/reports")
 def get_reports():
+    if not pdf_reports:
+        return {"message": "No reports found. Please upload PDFs to 'pdf-files'."}
     return pdf_reports
 
 
@@ -126,6 +125,9 @@ def get_reports():
 @app.post("/query")
 async def process_query(request: QueryRequest):
     query = request.query
+
+    if not pdf_reports:
+        raise HTTPException(status_code=400, detail="No PDFs found. Upload reports first.")
 
     try:
         query_embedding = np.array([get_embedding(query)], dtype=np.float32)
