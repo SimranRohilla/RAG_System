@@ -14,12 +14,12 @@ load_dotenv()
 app = FastAPI()
 
 # Enable CORS for frontend communication
-#app.add_middleware(
-#    CORSMiddleware,
-#    allow_origins=["*"],
-#    allow_methods=["*"],
-#    allow_headers=["*"],
-#)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://rag-system-1.onrender.com"],  
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # OpenAI API Key
 openai.api_key = os.getenv("OPENAI_API_KEY")
