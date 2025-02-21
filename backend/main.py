@@ -67,17 +67,20 @@ def chunk_text(text, max_chars=8000):
     return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
 
 
-# ✅ Generate OpenAI embeddings (Handles API failures)
 def get_embedding(text):
     chunks = chunk_text(text)
     embeddings = []
 
     for chunk in chunks:
         try:
-            response = openai.Embedding.create(input=chunk, model="text-embedding-ada-002")
-            embeddings.append(response['data'][0]['embedding'])
-        except openai.error.OpenAIError as e:
-            print(f"OpenAI Error: {e}")
+            response = openai.embeddings.create(
+                model="text-embedding-ada-002",
+                input=chunk
+            )
+            embeddings.append(response.data[0].embedding)  # New syntax
+
+        except openai.OpenAIError as e:  # Fix error handling
+            print(f"OpenAI API Error: {e}")
 
     return np.mean(np.array(embeddings), axis=0) if embeddings else np.zeros(DIMENSION)
 
