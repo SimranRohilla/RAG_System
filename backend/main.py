@@ -25,7 +25,8 @@ app.add_middleware(
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Configurable PDF Directory
-PDF_DIR = os.getenv("PDF_DIR", os.path.join(os.getcwd(), "pdf-files"))
+PDF_DIR = os.getenv("PDF_DIR", os.path.abspath(os.path.join(os.getcwd(), "..", "pdf-files")))
+
 print("📂 Checking PDF files in:", PDF_DIR)
 print("Found PDFs:", os.listdir(PDF_DIR))
 
