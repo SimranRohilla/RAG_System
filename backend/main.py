@@ -30,25 +30,21 @@ PDF_DIR = os.getenv("PDF_DIR", os.path.abspath(os.path.join(os.getcwd(), "..", "
 print("📂 Checking PDF files in:", PDF_DIR)
 print("Found PDFs:", os.listdir(PDF_DIR))
 
-
-# FAISS Index File
-FAISS_INDEX_PATH = "faiss_index.bin"
+# FAISS Index File (Now stored outside backend for persistence)
+FAISS_INDEX_PATH = os.path.join(os.getcwd(), "..", "faiss_index.bin")
 
 # Define embedding dimensions (OpenAI "text-embedding-ada-002" = 1536)
 DIMENSION = 1536
-
 
 # ✅ Root Endpoint to Fix "404 Not Found"
 @app.get("/")
 def home():
     return {"message": "API is running! Go to /docs to test."}
 
-
 # ✅ Ensure the PDF directory exists
 if not os.path.exists(PDF_DIR):
     print(f"⚠️ Warning: PDF directory '{PDF_DIR}' not found. Creating it...")
     os.makedirs(PDF_DIR)
-
 
 # ✅ Extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -61,29 +57,27 @@ def extract_text_from_pdf(pdf_path):
         print(f"Error extracting text from {pdf_path}: {e}")
     return text.strip()
 
-
 # ✅ Chunk text for embedding processing
 def chunk_text(text, max_chars=8000):
     return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
 
-
+# ✅ Generate OpenAI embeddings (Handles API failures)
 def get_embedding(text):
     chunks = chunk_text(text)
     embeddings = []
 
     for chunk in chunks:
         try:
-            response = openai.embeddings.create(
+            response = openai.Embedding.create(  # ✅ Correct OpenAI method
                 model="text-embedding-ada-002",
-                input=chunk
+                input=[chunk]  # ✅ Must be a list
             )
-            embeddings.append(response.data[0].embedding)  # New syntax
+            embeddings.append(response["data"][0]["embedding"])  # ✅ Correct response format
 
-        except openai.OpenAIError as e:  # Fix error handling
+        except openai.OpenAIError as e:  # ✅ Correct error handling
             print(f"OpenAI API Error: {e}")
 
     return np.mean(np.array(embeddings), axis=0) if embeddings else np.zeros(DIMENSION)
-
 
 # ✅ Load and process PDF reports
 pdf_reports = []
@@ -100,7 +94,6 @@ for filename in os.listdir(PDF_DIR):
 if not pdf_reports:
     print("⚠️ Warning: No PDFs found in 'pdf-files' directory. Please upload PDFs!")
 
-
 # ✅ Load or create FAISS index
 if os.path.exists(FAISS_INDEX_PATH):
     index = faiss.read_index(FAISS_INDEX_PATH)  # Load existing FAISS index
@@ -114,11 +107,9 @@ if pdf_reports:
     index.add(report_embeddings)
     faiss.write_index(index, FAISS_INDEX_PATH)  # Save index to disk
 
-
 # ✅ API Model
 class QueryRequest(BaseModel):
     query: str
-
 
 # ✅ Get available reports
 @app.get("/reports")
@@ -126,7 +117,6 @@ def get_reports():
     if not pdf_reports:
         return {"message": "No reports found. Please upload PDFs to 'pdf-files'."}
     return pdf_reports
-
 
 # ✅ Process Query (Search FAISS + Generate AI Response)
 @app.post("/query")
@@ -162,12 +152,8 @@ async def process_query(request: QueryRequest):
             "sources": [pdf_reports[idx] for idx in indices[0] if idx < len(pdf_reports)],
         }
 
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         raise HTTPException(status_code=500, detail=f"OpenAI API Error: {e}")
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
-
 
 # ✅ Run FastAPI server
 if __name__ == "__main__":
