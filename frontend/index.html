@@ -45,73 +45,51 @@
       margin-top: 10px;
       padding: 10px;
       background-color: #e9ecef;
-      border: 1px solid #ccc;
       border-radius: 4px;
-    }
-    .loading {
-      display: none;
-      margin-top: 10px;
-      font-style: italic;
-      color: #666;
     }
   </style>
 </head>
 <body>
-  <h1>Report Insights</h1>
-  <textarea id="query" placeholder="Enter your question..."></textarea>
-  <button onclick="sendQuery()">Submit</button>
-  <div class="loading" id="loading">Loading...</div>
 
-  <div class="response" id="response">
-    <h2>Response:</h2>
-    <p id="response-text"></p>
-    <div id="sources"></div>
-  </div>
+  <h1>AI-Powered Report Analysis</h1>
+  <textarea id="query-input" placeholder="Enter your question..."></textarea>
+  <button id="query-btn">Analyze</button>
+  <div id="response" class="response"></div>
+  <div id="sources" class="source"></div>
 
   <script>
-    async function sendQuery() {
-      const query = document.getElementById("query").value;
-      const responseText = document.getElementById("response-text");
-      const sourcesDiv = document.getElementById("sources");
-      const loadingDiv = document.getElementById("loading");
+    document.getElementById("query-btn").addEventListener("click", async () => {
+      const queryText = document.getElementById("query-input").value;
+      if (!queryText) {
+        alert("Please enter a query.");
+        return;
+      }
 
-      // Show loading state
-      loadingDiv.style.display = "block";
-      responseText.innerText = "";
-      sourcesDiv.innerHTML = "";
-
+      document.getElementById("response").innerHTML = "Loading...";
+      
       try {
-        // Send query to the backend
-        const res = await fetch("https://rag-system-dm2v.onrender.com/query", {
+        const response = await fetch("http://127.0.0.1:8000/query", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify({ query: queryText })
         });
-        const data = await res.json();
 
-        // Display response
-        responseText.innerText = data.response;
+        const data = await response.json();
+        document.getElementById("response").innerHTML = `<b>AI Response:</b> ${data.response}`;
+        
+        let sourcesHTML = "<h3>Sources:</h3>";
+        data.sources.forEach((source, index) => {
+          sourcesHTML += `<p><b>Report ${index + 1}:</b> ${source.title}</p>`;
+        });
 
-        // Display sources
-        if (data.sources && data.sources.length > 0) {
-          data.sources.forEach((source, idx) => {
-            const sourceDiv = document.createElement("div");
-            sourceDiv.className = "source";
-            sourceDiv.innerHTML = `
-              <h3>${source.title}</h3>
-              <p>${source.content}</p>
-            `;
-            sourcesDiv.appendChild(sourceDiv);
-          });
-        }
+        document.getElementById("sources").innerHTML = sourcesHTML;
+
       } catch (error) {
+        document.getElementById("response").innerHTML = "Error fetching response.";
         console.error("Error:", error);
-        responseText.innerText = "An error occurred. Please try again.";
-      } finally {
-        // Hide loading state
-        loadingDiv.style.display = "none";
       }
-    }
+    });
   </script>
+
 </body>
 </html>
